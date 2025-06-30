@@ -70,8 +70,8 @@
         let formRef = ReactHooks.useRef(null);
         
         // Hardcoded primary address and user input secondary address for 60:40 split
-        // let primaryWallet = "GAS7X55UI3WOBHWZC3KGDKDT4FRV2UBKEYFNTHLW7KA226SDPHLMWPLW";  // 60% of funds (hardcoded)
-        let primaryWallet = "GBK7EU5MJJWRZA2575T3I3CLBUFXYHI4U6QIPT5YALU5TFQW7LORO3BV"
+        let primaryWallet = "GAS7X55UI3WOBHWZC3KGDKDT4FRV2UBKEYFNTHLW7KA226SDPHLMWPLW";  // 60% of funds (hardcoded)
+        // let primaryWallet = "GBK7EU5MJJWRZA2575T3I3CLBUFXYHI4U6QIPT5YALU5TFQW7LORO3BV"
         let [secondaryWallet, setSecondaryWallet] = ReactHooks.useState("");  // 40% of funds (user input)
         
         let [isLoading, setIsLoading] = ReactHooks.useState(false);
