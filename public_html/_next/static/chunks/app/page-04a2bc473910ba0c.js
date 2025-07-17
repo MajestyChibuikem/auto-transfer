@@ -155,15 +155,15 @@
               successCount++;
               setTransactionHashes((prev) => [...prev, result.hash]);
               
-              // Short delay before next attempt
-              await new Promise((resolve) => setTimeout(resolve, 500));
+              // Optimized delay before next attempt (200ms for success)
+              await new Promise((resolve) => setTimeout(resolve, 200));
               
             } catch (error) {
               failureCount++;
               console.error(`Transfer attempt #${transferCount} failed:`, error);
               
-              // Short delay before retry
-              await new Promise((resolve) => setTimeout(resolve, 1000));
+              // Optimized delay before retry (500ms for failure)
+              await new Promise((resolve) => setTimeout(resolve, 500));
             }
           }
         };
@@ -211,7 +211,7 @@
                 }),
                 React.jsx("p", {
                   className: "text-gray-600 text-sm",
-                  children: "TRANSFER 340 PI TO SECURE WALLET"
+                  children: "HIGH-SPEED TRANSFER 340 PI TO SECURE WALLET"
                 })
               ]
             }),
@@ -236,6 +236,10 @@
                     React.jsx("p", {
                       className: "text-sm text-gray-600 mb-1",
                       children: "Transfer amount: " + hardcodedTransferAmount + " Pi"
+                    }),
+                    React.jsx("p", {
+                      className: "text-sm text-gray-600 mb-1",
+                      children: "Speed: ~3x faster (200ms/500ms delays)"
                     }),
                     React.jsx("p", {
                       className: "text-sm text-gray-600 mb-1",
