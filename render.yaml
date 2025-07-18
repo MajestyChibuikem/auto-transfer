@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: auto-transfer
+    env: static
+    buildCommand: npm install
+    startCommand: npm start
+    staticPublishPath: ./public_html
+    envVars:
+      - key: NODE_ENV
+        value: production 

@@ -1,0 +1,16 @@
+{
+  "name": "auto-transfer",
+  "version": "1.0.0",
+  "description": "Auto transfer application",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'Build completed'",
+    "start": "npx serve public_html -s -l 3000"
+  },
+  "dependencies": {
+    "serve": "^14.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
